@@ -24,6 +24,7 @@
 # IN THE SOFTWARE.
 
 use strict;
+use Encode 'decode';
 eval {
     require Email::Outlook::Message;
     require HTML::Entities;
@@ -62,7 +63,7 @@ handle_mimepart($mime);
 
 sub do_header {
     my ($msg, $header) = @_;
-    my $s = $msg->header_str($header);
+    my $s = decode('utf-8', $msg->header_str($header));
     return HTML::Entities::encode_entities($s);
 }
 
@@ -85,7 +86,8 @@ sub handle_mimepart {
 	}
     } elsif ($type eq 'text') {
 	if ($sub eq 'plain') {
-	    print "<pre>", HTML::Entities::encode_entities($e->body), "</pre>\n";
+	    my $body = decode('utf-8', $e->body);
+	    print "<pre>", HTML::Entities::encode_entities($body), "</pre>\n";
 	    return 1;
 	} elsif ($sub eq 'html') {
 	    my $m = $e->body;
