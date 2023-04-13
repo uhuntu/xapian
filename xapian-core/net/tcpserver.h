@@ -1,7 +1,7 @@
 /** @file
  *  @brief Generic TCP/IP socket based server base class.
  */
-/* Copyright (C) 2007,2008 Olly Betts
+/* Copyright (C) 2007,2008,2023 Olly Betts
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -22,7 +22,7 @@
 #define XAPIAN_INCLUDED_TCPSERVER_H
 
 #ifdef __WIN32__
-# include "remoteconnection.h"
+# include "socket_utils.h"
 # define SOCKET_INITIALIZER_MIXIN : private WinsockInitializer
 #else
 # define SOCKET_INITIALIZER_MIXIN
@@ -32,30 +32,16 @@
 
 #include <string>
 
-/** TCP/IP socket based server for RemoteDatabase.
- *
- *  This class implements the server used by xapian-tcpsrv.
- */
+/** Generic TCP/IP socket based server base class. */
 class XAPIAN_VISIBILITY_DEFAULT TcpServer SOCKET_INITIALIZER_MIXIN {
     /// Don't allow assignment.
-    void operator=(const TcpServer &);
+    TcpServer& operator=(const TcpServer&) = delete;
 
     /// Don't allow copying.
-    TcpServer(const TcpServer &);
+    TcpServer(const TcpServer&) = delete;
 
     /** The socket we're listening on. */
-    int listen_socket;
-
-    /** Create a listening socket ready to accept connections.
-     *
-     *  @param host	hostname or address to listen on or an empty string to
-     *			accept connections on any interface.
-     *  @param port	TCP port to listen on.
-     *  @param tcp_nodelay	If true, enable TCP_NODELAY option.
-     */
-    XAPIAN_VISIBILITY_INTERNAL
-    static int get_listening_socket(const std::string & host, int port,
-				    bool tcp_nodelay);
+    int listener;
 
   protected:
     /** Should we produce output when connections are made or lost? */
@@ -75,11 +61,16 @@ class XAPIAN_VISIBILITY_DEFAULT TcpServer SOCKET_INITIALIZER_MIXIN {
      *	@param verbose	Should we produce output when connections are
      *			made or lost?
      */
-    TcpServer(const std::string &host, int port, bool tcp_nodelay,
-	      bool verbose);
+    TcpServer(const std::string& host, int port, bool tcp_nodelay,
+	      bool verbose_);
 
-    /** Destructor. */
-    virtual ~TcpServer();
+    /** Destructor.
+     *
+     *  Note: We don't need a virtual destructor despite having a virtual
+     *  method as we don't ever delete a subclass using a pointer to the
+     *  base class.
+     */
+    ~TcpServer();
 
     /** Accept connections and service requests indefinitely.
      *
@@ -92,8 +83,11 @@ class XAPIAN_VISIBILITY_DEFAULT TcpServer SOCKET_INITIALIZER_MIXIN {
     /** Accept a single connection, service requests on it, then stop.  */
     void run_once();
 
+    /// Should we produce output when connections are made or lost?
+    bool get_verbose() const { return verbose; }
+
     /// Handle a single connection on an already connected socket.
     virtual void handle_one_connection(int socket) = 0;
 };
 
-#endif  // XAPIAN_INCLUDED_TCPSERVER_H
+#endif // XAPIAN_INCLUDED_TCPSERVER_H
